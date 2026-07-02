@@ -3,6 +3,10 @@
 CarCompass is an intelligent car recommendation engine that helps users find their perfect vehicle through a dynamic questionnaire and keyword-matching algorithm. It also features a full car catalog, admin management panel, and user authentication.
 
 ---
+## CREDS
+  1. admin@carcompass.com / admin123
+  2. you can sign up 
+
 
 ## 1. What did you build and why? What did you deliberately cut?
 
