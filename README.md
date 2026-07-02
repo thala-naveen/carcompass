@@ -3,6 +3,9 @@
 CarCompass is an intelligent car recommendation engine that helps users find their perfect vehicle through a dynamic questionnaire and keyword-matching algorithm. It also features a full car catalog, admin management panel, and user authentication.
 
 ---
+## Local Setup
+- run "sh start-dev.sh"
+
 ## CREDS
   1. admin@carcompass.com / admin123
   2. you can sign up 
