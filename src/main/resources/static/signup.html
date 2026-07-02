@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Create Account – CarCompass</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-inner">
+      <a class="brand" href="/">&#9650; CarCompass</a>
+    </div>
+  </nav>
+
+  <div class="auth-page">
+    <div class="auth-card">
+      <h1 class="auth-title">Create an account</h1>
+      <p class="auth-sub">Start finding your perfect car today</p>
+      <form id="signupForm">
+        <div class="form-group">
+          <label class="form-label" for="email">Email</label>
+          <input class="form-input" id="email" type="email" placeholder="you@example.com" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="password">Password</label>
+          <input class="form-input" id="password" type="password" placeholder="Min. 6 characters" required minlength="6" />
+        </div>
+        <button class="btn-submit" type="submit" id="signupBtn">Create Account</button>
+        <p class="error-msg" id="signupError"></p>
+      </form>
+      <div class="auth-switch">Already have an account? <a href="/login.html">Sign in →</a></div>
+    </div>
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="/js/auth.js"></script>
+  <script>
+    $(function () {
+      if (AUTH.isLoggedIn()) window.location.href = '/';
+
+      $('#signupForm').on('submit', function (e) {
+        e.preventDefault();
+        const $btn = $('#signupBtn');
+        $btn.text('Creating account...').prop('disabled', true);
+
+        $.ajax({
+          url: '/api/auth/signup',
+          method: 'POST',
+          contentType: 'application/json',
+          data: JSON.stringify({ email: $('#email').val(), password: $('#password').val() }),
+          success: function () {
+            showToast('Account created! Logging you in...', 'success');
+            // auto-login
+            $.ajax({
+              url: '/api/auth/login',
+              method: 'POST',
+              contentType: 'application/json',
+              data: JSON.stringify({ email: $('#email').val(), password: $('#password').val() }),
+              success: function (res) {
+                AUTH.set(res.token, $('#email').val());
+                setTimeout(() => window.location.href = '/questionnaire.html', 800);
+              }
+            });
+          },
+          error: function (xhr) {
+            const msg = xhr.responseText || 'Signup failed. Try again.';
+            $('#signupError').text(msg).show();
+            $btn.text('Create Account').prop('disabled', false);
+          }
+        });
+      });
+    });
+  </script>
+</body>
+</html>
