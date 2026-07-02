@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign In – CarCompass</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-inner">
+      <a class="brand" href="/">&#9650; CarCompass</a>
+    </div>
+  </nav>
+
+  <div class="auth-page">
+    <div class="auth-card">
+      <h1 class="auth-title">Welcome back</h1>
+      <p class="auth-sub">Sign in to your CarCompass account</p>
+      <form id="loginForm">
+        <div class="form-group">
+          <label class="form-label" for="email">Email</label>
+          <input class="form-input" id="email" type="email" placeholder="you@example.com" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="password">Password</label>
+          <input class="form-input" id="password" type="password" placeholder="••••••••" required />
+        </div>
+        <button class="btn-submit" type="submit" id="loginBtn">Sign In</button>
+        <p class="error-msg" id="loginError"></p>
+      </form>
+      <div class="auth-switch">Don't have an account? <a href="/signup.html">Create one →</a></div>
+    </div>
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="/js/auth.js"></script>
+  <script>
+    $(function () {
+      if (AUTH.isLoggedIn()) window.location.href = '/';
+
+      $('#loginForm').on('submit', function (e) {
+        e.preventDefault();
+        const $btn = $('#loginBtn');
+        $btn.text('Signing in...').prop('disabled', true);
+
+        $.ajax({
+          url: '/api/auth/login',
+          method: 'POST',
+          contentType: 'application/json',
+          data: JSON.stringify({ email: $('#email').val(), password: $('#password').val() }),
+          success: function (res) {
+            AUTH.set(res.token, $('#email').val());
+            showToast('Welcome back! 🎉', 'success');
+            setTimeout(() => window.location.href = '/', 800);
+          },
+          error: function (xhr) {
+            const msg = xhr.status === 401 ? 'Invalid email or password' : 'Login failed. Try again.';
+            $('#loginError').text(msg).show();
+            $btn.text('Sign In').prop('disabled', false);
+          }
+        });
+      });
+    });
+  </script>
+</body>
+</html>

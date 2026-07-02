@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Find My Perfect Car – CarCompass</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-inner">
+      <a class="brand" href="/">&#9650; CarCompass</a>
+      <div class="nav-links">
+        <a href="/browse.html">Browse</a>
+        <span id="authLinks"><a href="/login.html" class="btn-ghost">Login</a></span>
+        <span id="userArea" style="display:none">
+          <span class="username-badge" id="userBadge"></span>
+          <a href="#" class="btn-ghost" id="logoutBtn">Logout</a>
+        </span>
+      </div>
+    </div>
+  </nav>
+
+  <div class="quest-page" id="questPage">
+
+    <!-- Progress bar -->
+    <div class="progress-bar-wrap">
+      <div class="progress-label">
+        <span id="questionCounter">Question 1 of ?</span>
+        <span id="progressPercent">0%</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill" style="width:0%"></div>
+      </div>
+    </div>
+
+    <!-- Question card -->
+    <div class="question-card" id="questionCard">
+      <div id="questionContent">
+        <p style="color:var(--text-muted)">Loading questions...</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Results page (hidden until done) -->
+  <div class="rec-page" id="resultsPage" style="display:none">
+    <h1 class="rec-title">🏆 Your Top Car Matches</h1>
+    <p class="rec-subtitle" id="resultsSubtitle">Based on your answers, here are the best cars for you:</p>
+    <div class="rec-list" id="recList"></div>
+    <div style="margin-top: 40px; text-align:center">
+      <a href="/questionnaire.html" class="btn-secondary" style="margin-right:12px">Retake Quiz</a>
+      <a href="/browse.html" class="btn-primary">Browse All Cars</a>
+    </div>
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="/js/auth.js"></script>
+  <script>
+    $(function () {
+      let questions = [];
+      let currentIndex = 0;
+      let answers = {}; // questionId -> [optionText, ...]
+
+      function loadQuestions() {
+        $.get('/api/questions', function (data) {
+          questions = data.filter(q => q.isActive);
+          if (questions.length === 0) {
+            $('#questionContent').html('<p style="color:var(--text-muted)">No questions found. Please add some questions first.</p>');
+            return;
+          }
+          renderQuestion(0);
+        }).fail(function () {
+          $('#questionContent').html('<p style="color:var(--danger)">Failed to load questions.</p>');
+        });
+      }
+
+      function renderQuestion(index) {
+        currentIndex = index;
+        const q = questions[index];
+        const total = questions.length;
+        const pct = Math.round((index / total) * 100);
+
+        $('#questionCounter').text(`Question ${index + 1} of ${total}`);
+        $('#progressPercent').text(pct + '%');
+        $('#progressFill').css('width', pct + '%');
+
+        const isMulti = q.type === 'MULTIPLE_CHOICE';
+        const selected = answers[q.id] || [];
+
+        let optionsHtml = q.options.map((opt, i) => {
+          const isSel = selected.includes(opt.text) ? 'selected' : '';
+          return `
+            <button class="option-btn ${isSel}" data-value="${opt.text}" data-index="${i}">
+              <span class="option-check"></span>
+              ${opt.text}
+              ${isMulti ? '<span style="margin-left:auto;font-size:0.75rem;color:var(--text-muted)">select all that apply</span>' : ''}
+            </button>`;
+        }).join('');
+
+        $('#questionContent').html(`
+          <p class="question-text">${q.text}</p>
+          <div class="options-list" id="optionsList">
+            ${optionsHtml}
+          </div>
+          <div class="quest-nav">
+            ${index > 0 ? '<button class="btn-back" id="backBtn">← Back</button>' : '<span></span>'}
+            <button class="btn-next" id="nextBtn" ${selected.length === 0 ? 'disabled' : ''}>
+              ${index === total - 1 ? 'See My Matches 🎯' : 'Next →'}
+            </button>
+          </div>
+        `);
+
+        // Option click handler
+        $('#optionsList').on('click', '.option-btn', function () {
+          const val = $(this).data('value');
+          if (isMulti) {
+            $(this).toggleClass('selected');
+          } else {
+            $('.option-btn').removeClass('selected');
+            $(this).addClass('selected');
+          }
+          const sel = $('.option-btn.selected').map((_, el) => $(el).data('value')).get();
+          answers[q.id] = sel;
+          $('#nextBtn').prop('disabled', sel.length === 0);
+        });
+
+        $('#backBtn').on('click', function () {
+          renderQuestion(index - 1);
+        });
+
+        $('#nextBtn').on('click', function () {
+          if (index === total - 1) {
+            submitAnswers();
+          } else {
+            renderQuestion(index + 1);
+          }
+        });
+      }
+
+      function submitAnswers() {
+        $('#progressFill').css('width', '100%');
+        $('#progressPercent').text('100%');
+        $('#questionContent').html('<p style="text-align:center;color:var(--text-muted);font-size:1.1rem">⚡ Finding your best matches...</p>');
+        $('#questPage .quest-nav').remove();
+
+        // Build answer list for the recommendation API
+        const answerList = Object.entries(answers).map(([questionId, selectedOptions]) => ({
+          questionId,
+          selectedOptions
+        }));
+
+        $.ajax({
+          url: '/api/recommendations',
+          method: 'POST',
+          contentType: 'application/json',
+          headers: AUTH.isLoggedIn() ? { 'Authorization': 'Bearer ' + AUTH.getToken() } : {},
+          data: JSON.stringify({ answers: answerList }),
+          success: function (results) {
+            showResults(results);
+          },
+          error: function (xhr) {
+            if (xhr.status === 401) {
+              // Guest mode - fall back to keyword search from answers
+              doKeywordFallback(answerList);
+            } else {
+              showResults([]);
+            }
+          }
+        });
+      }
+
+      function doKeywordFallback(answerList) {
+        // Collect all selected option texts as keywords
+        const keywords = answerList.flatMap(a => a.selectedOptions);
+        $.get('/api/cars', function (cars) {
+          const scored = cars.map(car => {
+            const tags = (car.tags || []).map(t => t.toLowerCase());
+            let score = 0;
+            keywords.forEach(kw => {
+              const kwLower = kw.toLowerCase();
+              tags.forEach(tag => { if (tag.includes(kwLower) || kwLower.includes(tag)) score++; });
+            });
+            const pct = keywords.length > 0 ? Math.round((score / keywords.length) * 100) : 0;
+            return { car, matchPercent: Math.min(pct, 100), matchedTags: tags.filter(t => keywords.some(k => t.includes(k.toLowerCase()))) };
+          });
+          scored.sort((a, b) => b.matchPercent - a.matchPercent);
+          showResults(scored);
+        }).fail(() => showResults([]));
+      }
+
+      function showResults(results) {
+        $('#questPage').hide();
+        $('#resultsPage').show();
+        const $list = $('#recList').empty();
+
+        if (!results || results.length === 0) {
+          $list.html('<p style="color:var(--text-muted)">No recommendations found. Try browsing all cars.</p>');
+          return;
+        }
+
+        results.forEach((r, i) => {
+          const car = r.car || r;
+          const pct = r.matchPercent || 0;
+          const matched = (r.matchedTags || []).join(', ');
+          
+          const firstImageId = (car.imageGridFsIds && car.imageGridFsIds.length > 0) ? car.imageGridFsIds[0] : null;
+          const imgHtml = firstImageId
+            ? `<img src="/api/cars/images/${firstImageId}" alt="${car.make} ${car.model}" 
+                    style="width:80px;height:60px;object-fit:cover;border-radius:10px;margin:0 16px" 
+                    onerror="this.outerHTML='<div style=\\'font-size:2.5rem;margin:0 16px\\'>🚗</div>'" />`
+            : `<div style="font-size:2.5rem;margin:0 16px">🚗</div>`;
+
+          $list.append(`
+            <div class="rec-card" style="display:flex;align-items:center;cursor:pointer" onclick="window.location='/car.html?id=${car.id}'">
+              <div class="rec-rank">#${i + 1}</div>
+              ${imgHtml}
+              <div class="rec-info" style="flex:1">
+                <div class="rec-name">${car.make} ${car.model}</div>
+                <div class="rec-variant">${car.variant || ''} &bull; ${car.exShowroomPrice ? '$' + Number(car.exShowroomPrice).toLocaleString() : 'N/A'}</div>
+                ${matched ? `<div class="rec-explanation">✓ Matches: ${matched}</div>` : ''}
+              </div>
+              <div class="rec-score">
+                <div class="score-ring">${pct}%</div>
+                <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px">match</div>
+              </div>
+            </div>
+          `);
+        });
+      }
+
+      loadQuestions();
+    });
+  </script>
+</body>
+</html>

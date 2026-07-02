@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Panel – CarCompass</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css" />
+  <style>
+    .admin-layout { display: flex; min-height: 100vh; padding-top: 64px; }
+
+    /* Sidebar */
+    .admin-sidebar {
+      width: 220px; flex-shrink: 0;
+      background: var(--bg-card); border-right: 1px solid var(--border);
+      padding: 32px 0; position: fixed; top: 64px; bottom: 0;
+    }
+    .sidebar-label {
+      font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.1em; color: var(--text-muted);
+      padding: 0 20px; margin-bottom: 8px;
+    }
+    .sidebar-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 20px; cursor: pointer; font-size: 0.9rem; font-weight: 500;
+      color: var(--text-muted); border-left: 3px solid transparent;
+      transition: all 0.2s;
+    }
+    .sidebar-item:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+    .sidebar-item.active { color: var(--text); border-left-color: var(--accent); background: rgba(108,99,255,0.08); }
+    .sidebar-item .si-icon { font-size: 1.1rem; }
+
+    /* Main content */
+    .admin-main { margin-left: 220px; flex: 1; padding: 40px 48px; }
+    .admin-page-title { font-size: 1.8rem; font-weight: 800; margin-bottom: 4px; }
+    .admin-page-sub { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 32px; }
+
+    /* Stats row */
+    .stats-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; margin-bottom: 40px; }
+    .stat-card {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 20px 24px;
+    }
+    .stat-value { font-size: 2rem; font-weight: 800; }
+    .stat-label { font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+    /* Panel */
+    .admin-panel { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .panel-header {
+      padding: 20px 24px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .panel-title { font-size: 1rem; font-weight: 700; }
+
+    /* Table */
+    .admin-table { width: 100%; border-collapse: collapse; }
+    .admin-table th {
+      padding: 12px 16px; text-align: left; font-size: 0.75rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+    }
+    .admin-table td {
+      padding: 14px 16px; font-size: 0.9rem; border-bottom: 1px solid rgba(255,255,255,0.04);
+      vertical-align: middle;
+    }
+    .admin-table tr:last-child td { border-bottom: none; }
+    .admin-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+    /* Action buttons */
+    .btn-edit {
+      background: rgba(108,99,255,0.1); border: 1px solid rgba(108,99,255,0.2);
+      color: #a89cff; font-size: 0.78rem; font-weight: 600;
+      padding: 5px 12px; border-radius: 6px; cursor: pointer;
+      transition: all 0.2s; margin-right: 6px;
+    }
+    .btn-edit:hover { background: rgba(108,99,255,0.2); }
+    .btn-delete {
+      background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2);
+      color: #f87171; font-size: 0.78rem; font-weight: 600;
+      padding: 5px 12px; border-radius: 6px; cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-delete:hover { background: rgba(239,68,68,0.2); }
+    .btn-upload {
+      background: rgba(34,211,165,0.1); border: 1px solid rgba(34,211,165,0.2);
+      color: #22d3a5; font-size: 0.78rem; font-weight: 600;
+      padding: 5px 12px; border-radius: 6px; cursor: pointer;
+      transition: all 0.2s; margin-right: 6px;
+    }
+    .btn-upload:hover { background: rgba(34,211,165,0.2); }
+
+    /* Image drop zone */
+    .drop-zone {
+      border: 2px dashed var(--border); border-radius: 12px;
+      padding: 32px; text-align: center; cursor: pointer;
+      transition: all 0.2s; color: var(--text-muted);
+    }
+    .drop-zone:hover, .drop-zone.dragover { border-color: var(--accent); color: var(--text); background: rgba(108,99,255,0.05); }
+    .drop-zone input[type=file] { display: none; }
+    .image-preview-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+    .img-thumb {
+      width: 80px; height: 60px; object-fit: cover; border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+
+    /* Toggle switch */
+    .toggle-wrap { display: flex; align-items: center; gap: 8px; }
+    .toggle { position: relative; width: 40px; height: 22px; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+      position: absolute; inset: 0; background: rgba(255,255,255,0.1);
+      border-radius: 50px; cursor: pointer; transition: 0.2s;
+    }
+    .toggle-slider::before {
+      content: ''; position: absolute;
+      width: 16px; height: 16px; left: 3px; bottom: 3px;
+      background: #fff; border-radius: 50%; transition: 0.2s;
+    }
+    input:checked + .toggle-slider { background: var(--accent); }
+    input:checked + .toggle-slider::before { transform: translateX(18px); }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(4px); z-index: 200;
+      display: flex; align-items: center; justify-content: center;
+      padding: 24px;
+    }
+    .modal {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 20px; padding: 36px; width: 100%; max-width: 560px;
+      max-height: 90vh; overflow-y: auto;
+      animation: slideUp 0.25s ease;
+    }
+    .modal-title { font-size: 1.3rem; font-weight: 800; margin-bottom: 24px; }
+    .modal-footer { display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; }
+    .btn-cancel {
+      background: rgba(255,255,255,0.06); border: 1px solid var(--border);
+      color: var(--text); padding: 10px 20px; border-radius: 10px; cursor: pointer;
+      font-size: 0.9rem; font-weight: 500; transition: all 0.2s;
+    }
+    .btn-cancel:hover { background: rgba(255,255,255,0.1); }
+    .btn-save {
+      background: linear-gradient(135deg, var(--accent), #8b80ff);
+      border: none; color: #fff; padding: 10px 24px; border-radius: 10px;
+      cursor: pointer; font-size: 0.9rem; font-weight: 600; transition: all 0.2s;
+    }
+    .btn-save:hover { transform: translateY(-1px); box-shadow: 0 4px 16px var(--accent-glow); }
+
+    /* Tags input */
+    .tags-input-wrap {
+      display: flex; flex-wrap: wrap; gap: 6px;
+      background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+      border-radius: 12px; padding: 10px 12px; min-height: 48px; cursor: text;
+    }
+    .tag-chip {
+      display: flex; align-items: center; gap: 4px;
+      background: rgba(108,99,255,0.15); border: 1px solid rgba(108,99,255,0.25);
+      color: #a89cff; font-size: 0.78rem; font-weight: 600;
+      padding: 3px 10px; border-radius: 50px;
+    }
+    .tag-remove { cursor: pointer; opacity: 0.7; font-size: 0.9rem; }
+    .tag-remove:hover { opacity: 1; }
+    .tags-input {
+      border: none; background: none; outline: none;
+      color: var(--text); font-size: 0.9rem; min-width: 80px; flex: 1;
+    }
+
+    /* Options builder for questions */
+    .options-builder { display: flex; flex-direction: column; gap: 8px; }
+    .option-row {
+      display: flex; gap: 8px; align-items: center;
+      background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+      border-radius: 10px; padding: 10px 14px;
+    }
+    .option-row input { flex: 1; background: none; border: none; outline: none; color: var(--text); font-size: 0.9rem; }
+    .btn-remove-opt { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.1rem; }
+    .btn-remove-opt:hover { color: var(--danger); }
+    .btn-add-option {
+      background: rgba(255,255,255,0.04); border: 1px dashed var(--border);
+      color: var(--text-muted); padding: 10px; border-radius: 10px;
+      cursor: pointer; font-size: 0.85rem; font-weight: 500;
+      transition: all 0.2s; text-align: center;
+    }
+    .btn-add-option:hover { border-color: rgba(108,99,255,0.4); color: var(--text); }
+
+    /* Sections */
+    .admin-section { display: none; }
+    .admin-section.active { display: block; }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="nav-inner">
+      <a class="brand" href="/">&#9650; CarCompass</a>
+      <div class="nav-links">
+        <a href="/" class="btn-ghost">← Back to site</a>
+        <span class="username-badge" id="adminEmail"></span>
+        <a href="#" class="btn-ghost" id="logoutBtn">Logout</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="admin-layout">
+
+    <!-- Sidebar -->
+    <aside class="admin-sidebar">
+      <div class="sidebar-label">Management</div>
+      <div class="sidebar-item active" data-section="dashboard" id="navDashboard">
+        <span class="si-icon">🏠</span> Dashboard
+      </div>
+      <div class="sidebar-item" data-section="cars" id="navCars">
+        <span class="si-icon">🚗</span> Cars
+      </div>
+      <div class="sidebar-item" data-section="questions" id="navQuestions">
+        <span class="si-icon">❓</span> Questions
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="admin-main">
+
+      <!-- ─── DASHBOARD ─── -->
+      <div class="admin-section active" id="sectionDashboard">
+        <h1 class="admin-page-title">Dashboard</h1>
+        <p class="admin-page-sub">Overview of your CarCompass data</p>
+        <div class="stats-row">
+          <div class="stat-card">
+            <div class="stat-value" id="statCars">–</div>
+            <div class="stat-label">Total Cars</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="statQuestions">–</div>
+            <div class="stat-label">Questions</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="statActiveQ">–</div>
+            <div class="stat-label">Active Questions</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── CARS ─── -->
+      <div class="admin-section" id="sectionCars">
+        <h1 class="admin-page-title">Cars</h1>
+        <p class="admin-page-sub">Manage your car catalog</p>
+        <div class="admin-panel">
+          <div class="panel-header">
+            <span class="panel-title">All Cars</span>
+            <button class="btn-save" id="addCarBtn">+ Add Car</button>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Make / Model</th>
+                  <th>Variant</th>
+                  <th>Price</th>
+                  <th>Mileage</th>
+                  <th>Safety</th>
+                  <th>Tags</th>
+                  <th>Images</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="carsTableBody">
+                <tr><td colspan="7" style="color:var(--text-muted);text-align:center;padding:32px">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── QUESTIONS ─── -->
+      <div class="admin-section" id="sectionQuestions">
+        <h1 class="admin-page-title">Questions</h1>
+        <p class="admin-page-sub">Manage the recommendation questionnaire</p>
+        <div class="admin-panel">
+          <div class="panel-header">
+            <span class="panel-title">All Questions</span>
+            <button class="btn-save" id="addQuestionBtn">+ Add Question</button>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Question</th>
+                  <th>Type</th>
+                  <th>Options</th>
+                  <th>Active</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="questionsTableBody">
+                <tr><td colspan="6" style="color:var(--text-muted);text-align:center;padding:32px">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- ─── IMAGE UPLOAD MODAL ─── -->
+  <div class="modal-overlay" id="imageModalOverlay" style="display:none">
+    <div class="modal">
+      <h2 class="modal-title" id="imageModalTitle">📷 Car Images</h2>
+
+      <!-- Existing images -->
+      <div style="margin-bottom:20px">
+        <label class="form-label" style="margin-bottom:10px;display:block">Current Images</label>
+        <div class="image-preview-grid" id="existingImages">
+          <span style="color:var(--text-muted);font-size:0.85rem">No images yet</span>
+        </div>
+      </div>
+
+      <!-- Upload zone -->
+      <label class="form-label" style="margin-bottom:10px;display:block">Upload New Image</label>
+      <div class="drop-zone" id="dropZone">
+        <input type="file" id="imageFileInput" accept="image/*" />
+        <div id="dropZoneText">
+          <div style="font-size:2rem;margin-bottom:8px">🖼️</div>
+          <div style="font-weight:600;margin-bottom:4px">Click or drag & drop an image</div>
+          <div style="font-size:0.8rem">PNG, JPG, WEBP supported</div>
+        </div>
+      </div>
+
+      <!-- Upload progress -->
+      <div id="uploadProgress" style="display:none;margin-top:14px">
+        <div class="progress-bar">
+          <div class="progress-fill" id="uploadProgressFill" style="width:0%"></div>
+        </div>
+        <p style="font-size:0.8rem;color:var(--text-muted);margin-top:6px" id="uploadStatus">Uploading...</p>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-cancel" id="imageModalClose">Close</button>
+        <button type="button" class="btn-save" id="uploadBtn" disabled>Upload</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── CAR MODAL ─── -->
+  <div class="modal-overlay" id="carModalOverlay" style="display:none">
+    <div class="modal">
+      <h2 class="modal-title" id="carModalTitle">Add Car</h2>
+      <form id="carForm">
+        <input type="hidden" id="carId" />
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div class="form-group">
+            <label class="form-label">Make</label>
+            <input class="form-input" id="carMake" placeholder="e.g. Toyota" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Model</label>
+            <input class="form-input" id="carModel" placeholder="e.g. Corolla" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Variant</label>
+            <input class="form-input" id="carVariant" placeholder="e.g. LE" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Ex-Showroom Price ($)</label>
+            <input class="form-input" id="carPrice" type="number" placeholder="e.g. 22000" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Mileage (mpg)</label>
+            <input class="form-input" id="carMileage" type="number" placeholder="e.g. 30" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Safety Rating (1-5)</label>
+            <input class="form-input" id="carSafety" type="number" min="1" max="5" placeholder="e.g. 5" />
+          </div>
+        </div>
+        <div class="form-group" style="margin-top:14px">
+          <label class="form-label">Tags <span style="color:var(--text-muted);font-weight:400;text-transform:none">(press Enter to add)</span></label>
+          <div class="tags-input-wrap" id="tagsWrap" onclick="$('#tagInput').focus()">
+            <input class="tags-input" id="tagInput" placeholder="sedan, suv, budget_low…" />
+          </div>
+          <input type="hidden" id="carTags" />
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-cancel" id="carModalClose">Cancel</button>
+          <button type="submit" class="btn-save">Save Car</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ─── QUESTION MODAL ─── -->
+  <div class="modal-overlay" id="questionModalOverlay" style="display:none">
+    <div class="modal">
+      <h2 class="modal-title" id="questionModalTitle">Add Question</h2>
+      <form id="questionForm">
+        <input type="hidden" id="questionId" />
+        <div class="form-group">
+          <label class="form-label">Question Text</label>
+          <input class="form-input" id="questionText" placeholder="e.g. What is your budget?" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Type</label>
+          <select class="filter-select" id="questionType" style="width:100%;border-radius:12px;padding:14px 16px">
+            <option value="SINGLE_CHOICE">Single Choice</option>
+            <option value="MULTIPLE_CHOICE">Multiple Choice</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Order</label>
+          <input class="form-input" id="questionOrder" type="number" placeholder="e.g. 1" min="1" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Options</label>
+          <div class="options-builder" id="optionsBuilder"></div>
+          <button type="button" class="btn-add-option" id="addOptionBtn" style="margin-top:8px">+ Add Option</button>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-cancel" id="questionModalClose">Cancel</button>
+          <button type="submit" class="btn-save">Save Question</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="/js/auth.js"></script>
+  <script>
+  $(function () {
+    // ─── Auth Guard ───
+    if (!AUTH.isLoggedIn()) { window.location.href = '/login.html'; return; }
+
+    $.ajax({
+      url: '/api/users/me',
+      headers: AUTH.headers(),
+      success: function (user) {
+        if (!user.roles.includes('ADMIN')) {
+          alert('Access denied. Admins only.');
+          window.location.href = '/';
+          return;
+        }
+        $('#adminEmail').text(user.email);
+        initAdmin();
+      },
+      error: function () { window.location.href = '/login.html'; }
+    });
+
+    // ─── Logout ───
+    $('#logoutBtn').on('click', function (e) {
+      e.preventDefault();
+      AUTH.clear();
+      window.location.href = '/login.html';
+    });
+  });
+
+  function initAdmin() {
+    // ─── Sidebar navigation ───
+    $('.sidebar-item').on('click', function () {
+      const section = $(this).data('section');
+      $('.sidebar-item').removeClass('active');
+      $(this).addClass('active');
+      $('.admin-section').removeClass('active');
+      $('#section' + section.charAt(0).toUpperCase() + section.slice(1)).addClass('active');
+      if (section === 'cars') loadCars();
+      if (section === 'questions') loadQuestions();
+    });
+
+    loadDashboard();
+
+    // ─────────────────────────
+    // CARS
+    // ─────────────────────────
+    let tags = [];
+
+    function loadCars() {
+      $.get('/api/cars', function (cars) {
+        $('#statCars').text(cars.length);
+        const $body = $('#carsTableBody').empty();
+        if (!cars.length) {
+          $body.html('<tr><td colspan="7" style="color:var(--text-muted);text-align:center;padding:32px">No cars yet. Add one!</td></tr>');
+          return;
+        }
+        cars.forEach(car => {
+          const tagsHtml = (car.tags || []).map(t => `<span class="car-tag">${t}</span>`).join(' ');
+          $body.append(`
+            <tr>
+              <td><strong>${car.make} ${car.model}</strong></td>
+              <td>${car.variant || '–'}</td>
+              <td>${car.exShowroomPrice ? '$' + Number(car.exShowroomPrice).toLocaleString() : '–'}</td>
+              <td>${car.mileage ? car.mileage + ' mpg' : '–'}</td>
+              <td>${car.safetyRating ? '★'.repeat(car.safetyRating) : '–'}</td>
+              <td>${tagsHtml || '–'}</td>
+              <td style="color:var(--text-muted);font-size:0.85rem">${(car.imageGridFsIds || []).length} image(s)</td>
+              <td style="white-space:nowrap">
+                <button class="btn-upload" onclick="openImageUpload('${car.id}', '${car.make} ${car.model}')">📷 Images</button>
+                <button class="btn-edit" onclick="openEditCar('${car.id}')">Edit</button>
+                <button class="btn-delete" onclick="deleteCar('${car.id}', '${car.make} ${car.model}')">Delete</button>
+              </td>
+            </tr>`);
+        });
+      });
+    }
+
+    function loadDashboard() {
+      $.get('/api/cars', c => { $('#statCars').text(c.length); });
+      $.get('/api/questions', qs => {
+        $('#statQuestions').text(qs.length);
+        $('#statActiveQ').text(qs.filter(q => q.isActive).length);
+      });
+    }
+
+    // Open Add Car modal
+    $('#addCarBtn').on('click', function () {
+      tags = [];
+      $('#carForm')[0].reset();
+      $('#carId').val('');
+      $('#tagsWrap .tag-chip').remove();
+      $('#carModalTitle').text('Add Car');
+      $('#carModalOverlay').show();
+    });
+
+    // Tags input
+    $('#tagInput').on('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ',') {
+        e.preventDefault();
+        const val = $(this).val().trim().replace(',', '');
+        if (val && !tags.includes(val)) {
+          tags.push(val);
+          renderTagChips();
+        }
+        $(this).val('');
+      }
+    });
+
+    function renderTagChips() {
+      $('#tagsWrap .tag-chip').remove();
+      tags.forEach(tag => {
+        $('#tagsWrap').prepend(`<span class="tag-chip">${tag} <span class="tag-remove" data-tag="${tag}">×</span></span>`);
+      });
+    }
+
+    $(document).on('click', '.tag-remove', function () {
+      const t = $(this).data('tag');
+      tags = tags.filter(x => x !== t);
+      renderTagChips();
+    });
+
+    // Car form submit
+    $('#carForm').on('submit', function (e) {
+      e.preventDefault();
+      const id = $('#carId').val();
+      const payload = {
+        make: $('#carMake').val(),
+        model: $('#carModel').val(),
+        variant: $('#carVariant').val(),
+        exShowroomPrice: parseFloat($('#carPrice').val()) || null,
+        mileage: parseFloat($('#carMileage').val()) || null,
+        safetyRating: parseInt($('#carSafety').val()) || null,
+        tags: tags
+      };
+      const method = id ? 'PUT' : 'POST';
+      const url = id ? '/api/cars/' + id : '/api/cars';
+      $.ajax({ url, method, contentType: 'application/json', headers: AUTH.headers(), data: JSON.stringify(payload),
+        success: function () {
+          $('#carModalOverlay').hide();
+          loadCars();
+          showToast(id ? 'Car updated!' : 'Car added!', 'success');
+        },
+        error: function () { showToast('Failed to save car', 'error'); }
+      });
+    });
+
+    $('#carModalClose').on('click', () => $('#carModalOverlay').hide());
+
+    window.openEditCar = function (id) {
+      $.get('/api/cars/' + id, function (car) {
+        tags = car.tags || [];
+        $('#carId').val(car.id);
+        $('#carMake').val(car.make);
+        $('#carModel').val(car.model);
+        $('#carVariant').val(car.variant);
+        $('#carPrice').val(car.exShowroomPrice);
+        $('#carMileage').val(car.mileage);
+        $('#carSafety').val(car.safetyRating);
+        renderTagChips();
+        $('#carModalTitle').text('Edit Car');
+        $('#carModalOverlay').show();
+      });
+    };
+
+    window.deleteCar = function (id, name) {
+      if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
+      $.ajax({ url: '/api/cars/' + id, method: 'DELETE', headers: AUTH.headers(),
+        success: function () { loadCars(); showToast('Car deleted', 'success'); },
+        error: function () { showToast('Delete failed', 'error'); }
+      });
+    };
+
+    // ─── IMAGE UPLOAD ───
+    let activeImageCarId = null;
+    let selectedFile = null;
+
+    window.openImageUpload = function (carId, carName) {
+      activeImageCarId = carId;
+      selectedFile = null;
+      $('#imageModalTitle').text('📷 Images – ' + carName);
+      $('#uploadBtn').prop('disabled', true);
+      $('#uploadProgress').hide();
+      $('#uploadProgressFill').css('width', '0%');
+      $('#imageFileInput').val('');
+      $('#dropZoneText').show();
+
+      // Load existing images
+      $.get('/api/cars/' + carId, function (car) {
+        const $grid = $('#existingImages').empty();
+        const ids = car.imageGridFsIds || [];
+        if (ids.length === 0) {
+          $grid.html('<span style="color:var(--text-muted);font-size:0.85rem">No images yet</span>');
+        } else {
+          ids.forEach(fid => {
+            $grid.append(`<img class="img-thumb" src="/api/cars/images/${fid}" alt="Car image" onerror="this.src=''" />`);
+          });
+        }
+      });
+
+      $('#imageModalOverlay').show();
+    };
+
+    $('#imageModalClose').on('click', () => { $('#imageModalOverlay').hide(); loadCars(); });
+
+    // Click drop zone to pick file
+    $('#dropZone').on('click', function () { $('#imageFileInput').click(); });
+
+    $('#imageFileInput').on('change', function () {
+      const file = this.files[0];
+      if (file) {
+        selectedFile = file;
+        $('#dropZoneText').html(`
+          <div style="font-size:2rem;margin-bottom:8px">✅</div>
+          <div style="font-weight:600">${file.name}</div>
+          <div style="font-size:0.8rem;color:var(--text-muted)">${(file.size / 1024).toFixed(1)} KB</div>
+        `);
+        $('#uploadBtn').prop('disabled', false);
+      }
+    });
+
+    // Drag-and-drop
+    $('#dropZone').on('dragover', function (e) { e.preventDefault(); $(this).addClass('dragover'); });
+    $('#dropZone').on('dragleave', function () { $(this).removeClass('dragover'); });
+    $('#dropZone').on('drop', function (e) {
+      e.preventDefault(); $(this).removeClass('dragover');
+      const file = e.originalEvent.dataTransfer.files[0];
+      if (file && file.type.startsWith('image/')) {
+        selectedFile = file;
+        $('#dropZoneText').html(`
+          <div style="font-size:2rem;margin-bottom:8px">✅</div>
+          <div style="font-weight:600">${file.name}</div>
+          <div style="font-size:0.8rem;color:var(--text-muted)">${(file.size / 1024).toFixed(1)} KB</div>
+        `);
+        $('#uploadBtn').prop('disabled', false);
+      }
+    });
+
+    $('#uploadBtn').on('click', function () {
+      if (!selectedFile || !activeImageCarId) return;
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+
+      $('#uploadProgress').show();
+      $('#uploadBtn').prop('disabled', true);
+      $('#uploadStatus').text('Uploading...');
+
+      $.ajax({
+        url: '/api/cars/' + activeImageCarId + '/images',
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + AUTH.getToken() },
+        data: formData,
+        processData: false,
+        contentType: false,
+        xhr: function () {
+          const xhr = new XMLHttpRequest();
+          xhr.upload.addEventListener('progress', function (e) {
+            if (e.lengthComputable) {
+              const pct = Math.round((e.loaded / e.total) * 100);
+              $('#uploadProgressFill').css('width', pct + '%');
+            }
+          });
+          return xhr;
+        },
+        success: function (updatedCar) {
+          $('#uploadStatus').text('✅ Upload successful!');
+          selectedFile = null;
+          $('#uploadBtn').prop('disabled', true);
+          // Refresh image list
+          const $grid = $('#existingImages').empty();
+          (updatedCar.imageGridFsIds || []).forEach(fid => {
+            $grid.append(`<img class="img-thumb" src="/api/cars/images/${fid}" alt="Car image" onerror="this.src=''" />`);
+          });
+          showToast('Image uploaded!', 'success');
+        },
+        error: function () {
+          $('#uploadStatus').text('❌ Upload failed. Try again.');
+          showToast('Image upload failed', 'error');
+          $('#uploadBtn').prop('disabled', false);
+        }
+      });
+    });
+
+    // ─────────────────────────
+    // QUESTIONS
+    // ─────────────────────────
+
+    function loadQuestions() {
+      $.get('/api/questions', function (qs) {
+        const $body = $('#questionsTableBody').empty();
+        if (!qs.length) {
+          $body.html('<tr><td colspan="6" style="color:var(--text-muted);text-align:center;padding:32px">No questions yet.</td></tr>');
+          return;
+        }
+        qs.forEach(q => {
+          const optCount = (q.options || []).length;
+          $body.append(`
+            <tr>
+              <td>${q.order || '–'}</td>
+              <td style="max-width:280px">${q.text}</td>
+              <td><span class="car-tag">${q.type === 'MULTIPLE_CHOICE' ? 'Multi' : 'Single'}</span></td>
+              <td>${optCount} option${optCount !== 1 ? 's' : ''}</td>
+              <td>
+                <label class="toggle">
+                  <input type="checkbox" ${q.isActive ? 'checked' : ''} onchange="toggleQuestion('${q.id}', this.checked)" />
+                  <span class="toggle-slider"></span>
+                </label>
+              </td>
+              <td>
+                <button class="btn-edit" onclick="openEditQuestion('${q.id}')">Edit</button>
+                <button class="btn-delete" onclick="deleteQuestion('${q.id}')">Delete</button>
+              </td>
+            </tr>`);
+        });
+      });
+    }
+
+    let questionOptions = [];
+
+    function renderOptionRows() {
+      const $b = $('#optionsBuilder').empty();
+      questionOptions.forEach((opt, i) => {
+        $b.append(`
+          <div class="option-row" data-index="${i}">
+            <span style="color:var(--text-muted);font-size:0.8rem;min-width:20px">${i + 1}.</span>
+            <input type="text" value="${opt.text || ''}" placeholder="Option text" class="opt-text-input" data-index="${i}" />
+            <button type="button" class="btn-remove-opt" onclick="removeOption(${i})">×</button>
+          </div>`);
+      });
+    }
+
+    window.removeOption = function (i) {
+      questionOptions.splice(i, 1);
+      renderOptionRows();
+    };
+
+    $(document).on('input', '.opt-text-input', function () {
+      const i = parseInt($(this).data('index'));
+      questionOptions[i].text = $(this).val();
+    });
+
+    $('#addOptionBtn').on('click', function () {
+      questionOptions.push({ text: '', weightMappings: {} });
+      renderOptionRows();
+    });
+
+    $('#addQuestionBtn').on('click', function () {
+      questionOptions = [];
+      $('#questionForm')[0].reset();
+      $('#questionId').val('');
+      renderOptionRows();
+      $('#questionModalTitle').text('Add Question');
+      $('#questionModalOverlay').show();
+    });
+
+    $('#questionModalClose').on('click', () => $('#questionModalOverlay').hide());
+
+    $('#questionForm').on('submit', function (e) {
+      e.preventDefault();
+      const id = $('#questionId').val();
+      const options = questionOptions.filter(o => o.text.trim());
+      const payload = {
+        text: $('#questionText').val(),
+        type: $('#questionType').val(),
+        order: parseInt($('#questionOrder').val()) || 1,
+        isActive: true,
+        options: options
+      };
+      const method = id ? 'PUT' : 'POST';
+      const url = id ? '/api/questions/' + id : '/api/questions';
+      $.ajax({ url, method, contentType: 'application/json', headers: AUTH.headers(), data: JSON.stringify(payload),
+        success: function () {
+          $('#questionModalOverlay').hide();
+          loadQuestions();
+          showToast(id ? 'Question updated!' : 'Question added!', 'success');
+        },
+        error: function () { showToast('Failed to save question', 'error'); }
+      });
+    });
+
+    window.openEditQuestion = function (id) {
+      $.get('/api/questions/' + id, function (q) {
+        questionOptions = q.options ? JSON.parse(JSON.stringify(q.options)) : [];
+        $('#questionId').val(q.id);
+        $('#questionText').val(q.text);
+        $('#questionType').val(q.type);
+        $('#questionOrder').val(q.order);
+        renderOptionRows();
+        $('#questionModalTitle').text('Edit Question');
+        $('#questionModalOverlay').show();
+      }).fail(() => { showToast('Could not load question', 'error'); });
+    };
+
+    window.toggleQuestion = function (id, isActive) {
+      // We need to fetch the current question, update isActive, then PUT
+      $.get('/api/questions/' + id, function (q) {
+        q.isActive = isActive;
+        $.ajax({ url: '/api/questions/' + id, method: 'PUT', contentType: 'application/json', headers: AUTH.headers(), data: JSON.stringify(q),
+          success: function () { showToast(isActive ? 'Question enabled' : 'Question disabled', 'success'); },
+          error: function () { showToast('Update failed', 'error'); }
+        });
+      });
+    };
+
+    window.deleteQuestion = function (id) {
+      if (!confirm('Delete this question? This cannot be undone.')) return;
+      $.ajax({ url: '/api/questions/' + id, method: 'DELETE', headers: AUTH.headers(),
+        success: function () { loadQuestions(); showToast('Question deleted', 'success'); },
+        error: function () { showToast('Delete failed', 'error'); }
+      });
+    };
+  }
+  </script>
+</body>
+</html>
