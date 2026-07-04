@@ -1,6 +1,18 @@
 version: '3.8'
 
 services:
+  app:
+    build: .
+    container_name: carcompass-app
+    ports:
+      - "8081:8080"
+    environment:
+      # Instructs the app container to connect via the internal Docker network name
+      - MONGO_URL=mongodb://mongodb:27017/carcompass
+    depends_on:
+      - mongodb
+    restart: unless-stopped
+
   mongodb:
     image: mongo:8
     container_name: mongodb
