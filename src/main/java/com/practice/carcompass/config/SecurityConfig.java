@@ -37,7 +37,16 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/", "/index.html", "/browse.html", "/questionnaire.html", "/login.html", "/signup.html").permitAll()
-                        .requestMatchers("/**/*.html", "/**/*.css", "/**/*.js").permitAll()
+                        .requestMatchers( "/",
+                                "/index.html",
+                                "/browse.html",
+                                "/questionnaire.html",
+                                "/login.html",
+                                "/signup.html",
+                                "/css/**",
+                                "/js/**",
+                                "/images/**",
+                                "/favicon.ico").permitAll()
                         // Public read access to cars, questions, and recommendations
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/cars/**").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/questions/**").permitAll()
